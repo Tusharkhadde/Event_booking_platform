@@ -1,168 +1,75 @@
-import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+// src/App.jsx
+import { useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-// Stores
-import useThemeStore from '@/store/themeStore';
-import useAuthStore from '@/store/authStore';
-
-// Services
-import authService from '@/services/authService';
-import profileService from '@/services/profileService';
+// Store
+import useThemeStore from "@/store/themeStore";
 
 // Layouts
-import PublicLayout from '@/layouts/PublicLayout';
-import UserLayout from '@/layouts/UserLayout';
-import OrganizerLayout from '@/layouts/OrganizerLayout';
-import AdminLayout from '@/layouts/AdminLayout';
+import PublicLayout from "@/layouts/PublicLayout";
+import UserLayout from "@/layouts/UserLayout";
+import OrganizerLayout from "@/layouts/OrganizerLayout";
+import AdminLayout from "@/layouts/AdminLayout";
+import VendorLayout from "@/layouts/VendorLayout";
 
 // Common Components
-import ProtectedRoute from '@/components/common/ProtectedRoute';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { Toaster } from '@/components/ui/sonner';
+import ProtectedRoute from "@/components/common/ProtectedRoute";
+import { Toaster } from "@/components/ui/sonner";
 
 // Public Pages
-import HomePage from '@/pages/public/HomePage';
-import EventsPage from '@/pages/public/EventsPage';
-import EventDetailsPage from '@/pages/public/EventDetailsPage';
-import LoginPage from '@/pages/public/LoginPage';
-import RegisterPage from '@/pages/public/RegisterPage';
-import VenuesPage from '@/pages/public/VenuesPage';
-import VenueDetailsPage from '@/pages/public/VenueDetailsPage';
+import HomePage from "@/pages/public/HomePage";
+import EventsPage from "@/pages/public/EventsPage";
+import EventDetailsPage from "@/pages/public/EventDetailsPage";
+import LoginPage from "@/pages/public/LoginPage";
+import RegisterPage from "@/pages/public/RegisterPage";
+import VenuesPage from "@/pages/public/VenuesPage";
+import VenueDetailsPage from "@/pages/public/VenueDetailsPage";
 
-// User Pages
-import ProfilePage from '@/pages/user/ProfilePage';
-import MyBookingsPage from '@/pages/user/MyBookingsPage';
-import TicketsPage from '@/pages/user/TicketsPage';
-import NotificationsPage from '@/pages/user/NotificationsPage';
+// User/Customer Pages
+import CustomerDashboard from "@/pages/user/CustomerDashboard";
+import ProfilePage from "@/pages/user/ProfilePage";
+import MyBookingsPage from "@/pages/user/MyBookingsPage";
+import TicketsPage from "@/pages/user/TicketsPage";
+import NotificationsPage from "@/pages/user/NotificationsPage";
+import SavedEventsPage from "@/pages/user/SavedEventsPage";
+import BookEventPage from "@/pages/user/BookEventPage";
 
 // Organizer Pages
-import OrganizerDashboard from '@/pages/organizer/OrganizerDashboard';
-import OrganizerEvents from '@/pages/organizer/OrganizerEvents';
-import CreateEventPage from '@/pages/organizer/CreateEventPage';
-import EditEventPage from '@/pages/organizer/EditEventPage';
-import EventPlanningPage from '@/pages/organizer/EventPlanningPage';
-import CreateVenuePage from '@/pages/organizer/CreateVenuePage';
+import OrganizerDashboard from "@/pages/organizer/OrganizerDashboard";
+import OrganizerEvents from "@/pages/organizer/OrganizerEvents";
+import CreateEventPage from "@/pages/organizer/CreateEventPage";
+import EditEventPage from "@/pages/organizer/EditEventPage";
+import EventPlanningPage from "@/pages/organizer/EventPlanningPage";
+import CreateVenuePage from "@/pages/organizer/CreateVenuePage";
+import GuestManagementPage from "@/pages/organizer/GuestManagementPage";
+import MenuManagementPage from "@/pages/organizer/MenuManagementPage";
+import WeddingShowcasePage from "@/pages/organizer/WeddingShowcasePage";
+
+// Vendor Pages
+import VendorDashboard from "@/pages/vendor/VendorDashboard";
+import VendorServicesPage from "@/pages/vendor/VendorServicesPage";
+import VendorBookingsPage from "@/pages/vendor/VendorBookingsPage";
+import VendorAvailabilityPage from "@/pages/vendor/VendorAvailabilityPage";
 
 // Admin Pages
-import AdminDashboard from '@/pages/admin/AdminDashboard';
-import AdminUsers from '@/pages/admin/AdminUsers';
-import AdminEvents from '@/pages/admin/AdminEvents';
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminEvents from "@/pages/admin/AdminEvents";
 
 function App() {
   const { initializeTheme } = useThemeStore();
-  const { 
-    login, 
-    logout, 
-    setLoading, 
-    setInitialized, 
-    isLoading, 
-    isInitialized 
-  } = useAuthStore();
 
-  // Initialize theme on mount
+  // ✅ Theme init only
   useEffect(() => {
     initializeTheme();
   }, [initializeTheme]);
 
-  // Initialize auth on mount
+  // ✅ TEMP: Supabase auth init disabled
   useEffect(() => {
-    let isMounted = true;
-    let initTimeout;
+    // console.log("Auth init disabled temporarily");
+  }, []);
 
-    const initAuth = async () => {
-      try {
-        setLoading(true);
-        const session = await authService.getSession();
-
-        if (!isMounted) return;
-
-        if (session && session.user) {
-          // Don't wait for profile - fetch it in background
-          profileService.getProfile(session.user.id)
-            .then(userProfile => {
-              if (isMounted) {
-                login(session.user, session, userProfile);
-              }
-            })
-            .catch(profileError => {
-              console.error('Profile fetch error:', profileError);
-              if (isMounted) {
-                login(session.user, session, null);
-              }
-            });
-        } else {
-          if (isMounted) {
-            setInitialized(true);
-          }
-        }
-      } catch (error) {
-        console.error('Auth init error:', error);
-        if (isMounted) {
-          setInitialized(true);
-        }
-      }
-    };
-
-    // Safety timeout - force app to initialize after 3 seconds
-    initTimeout = setTimeout(() => {
-      if (isMounted) {
-        console.warn('Forcing app initialization due to timeout');
-        setInitialized(true);
-      }
-    }, 3000);
-
-    initAuth();
-
-    // Auth state change listener
-    const { data: { subscription } } = authService.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth event:', event);
-
-        if (!isMounted) return;
-
-        if (event === 'SIGNED_IN' && session) {
-          // Don't wait for profile - fetch in background
-          login(session.user, session, null);
-          
-          // Fetch profile in background
-          profileService.getProfile(session.user.id)
-            .then(userProfile => {
-              if (isMounted) {
-                useAuthStore.getState().setProfile(userProfile);
-              }
-            })
-            .catch(error => {
-              console.error('Profile fetch on sign in:', error);
-            });
-        } else if (event === 'SIGNED_OUT') {
-          if (isMounted) {
-            logout();
-          }
-        } else if (event === 'TOKEN_REFRESHED' && session) {
-          // Just update the session, don't refetch profile
-          if (isMounted) {
-            useAuthStore.getState().setSession(session);
-          }
-        }
-      }
-    );
-
-    return () => {
-      isMounted = false;
-      clearTimeout(initTimeout);
-      subscription?.unsubscribe();
-    };
-  }, []); // Empty dependency array - only run once
-
-  // Show loading while initializing
-  if (!isInitialized) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading EventSphere..." />
-      </div>
-    );
-  }
-
+  // ✅ IMPORTANT: No loading guard, always render routes
   return (
     <>
       <Routes>
@@ -177,7 +84,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
         </Route>
 
-        {/* ==================== USER ROUTES ==================== */}
+        {/* ==================== CUSTOMER/USER ROUTES ==================== */}
         <Route
           element={
             <ProtectedRoute>
@@ -185,16 +92,19 @@ function App() {
             </ProtectedRoute>
           }
         >
+          <Route path="/dashboard" element={<CustomerDashboard />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/my-bookings" element={<MyBookingsPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
+          <Route path="/saved" element={<SavedEventsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/book/:eventId" element={<BookEventPage />} />
         </Route>
 
         {/* ==================== ORGANIZER ROUTES ==================== */}
         <Route
           element={
-            <ProtectedRoute allowedRoles={['organizer', 'admin']}>
+            <ProtectedRoute allowedRoles={["organizer", "admin"]}>
               <OrganizerLayout />
             </ProtectedRoute>
           }
@@ -203,14 +113,43 @@ function App() {
           <Route path="/organizer/events" element={<OrganizerEvents />} />
           <Route path="/organizer/events/create" element={<CreateEventPage />} />
           <Route path="/organizer/events/edit/:id" element={<EditEventPage />} />
-          <Route path="/organizer/events/:id/planning" element={<EventPlanningPage />} />
+          <Route
+            path="/organizer/events/:id/planning"
+            element={<EventPlanningPage />}
+          />
           <Route path="/organizer/venues/create" element={<CreateVenuePage />} />
+          <Route
+            path="/organizer/guests/:eventId"
+            element={<GuestManagementPage />}
+          />
+          <Route
+            path="/organizer/menus/:eventId"
+            element={<MenuManagementPage />}
+          />
+          <Route
+            path="/organizer/wedding-showcase"
+            element={<WeddingShowcasePage />}
+          />
+        </Route>
+
+        {/* ==================== VENDOR ROUTES ==================== */}
+        <Route
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <VendorLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/vendor/services" element={<VendorServicesPage />} />
+          <Route path="/vendor/bookings" element={<VendorBookingsPage />} />
+          <Route path="/vendor/availability" element={<VendorAvailabilityPage />} />
         </Route>
 
         {/* ==================== ADMIN ROUTES ==================== */}
         <Route
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -224,9 +163,9 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {/* Toast Notifications */}
       <Toaster />
     </>
   );
 }
+
 export default App;

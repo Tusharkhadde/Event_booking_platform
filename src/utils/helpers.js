@@ -3,30 +3,51 @@ import { format, parseISO } from 'date-fns';
 export function formatDate(date, formatStr = 'MMM dd, yyyy') {
   if (!date) return '';
   const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return format(dateObj, formatStr);
+  try {
+    return format(dateObj, formatStr);
+  } catch (e) {
+    return '';
+  }
 }
 
 export function formatDateTime(date) {
   if (!date) return '';
   const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return format(dateObj, 'MMM dd, yyyy HH:mm');
+  try {
+    return format(dateObj, 'MMM dd, yyyy HH:mm');
+  } catch (e) {
+    return '';
+  }
 }
 
 export function formatCurrency(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-  }).format(amount);
+  }).format(amount || 0);
 }
 
+// UPDATED: Better initials generation
 export function getInitials(name) {
   if (!name) return 'U';
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  
+  // If it's an email, take the part before @
+  if (name.includes('@')) {
+    name = name.split('@')[0];
+  }
+
+  // Remove extra spaces
+  const cleanName = name.trim();
+  
+  if (cleanName.length === 0) return 'U';
+
+  const parts = cleanName.split(' ');
+  
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export function generateId() {

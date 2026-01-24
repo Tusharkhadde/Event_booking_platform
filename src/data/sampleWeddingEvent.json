@@ -1,0 +1,174 @@
+{
+  "organizer": {
+    "name": "Aarav Sharma",
+    "email": "aarav.organizer@example.com",
+    "phone": "+91-9876543210",
+    "avatar_url": "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg"
+  },
+  "venue": {
+    "name": "Grand Royal Palace",
+    "address": "MG Road, Bengaluru, Karnataka 560001",
+    "city": "Bengaluru",
+    "capacity": 300,
+    "price_range": "$$$",
+    "amenities": [
+      "Valet Parking",
+      "Central AC",
+      "Stage",
+      "Bridal Room",
+      "In-house Catering",
+      "Sound System",
+      "Lighting"
+    ],
+    "images": [
+      "https://images.pexels.com/photos/169211/pexels-photo-169211.jpeg",
+      "https://images.pexels.com/photos/169190/pexels-photo-169190.jpeg",
+      "https://images.pexels.com/photos/169213/pexels-photo-169213.jpeg"
+    ]
+  },
+  "event": {
+    "title": "Aarav & Meera Wedding Reception",
+    "description": "Join us to celebrate the wedding reception of Aarav & Meera at Grand Royal Palace. An evening filled with music, dance, and memories with family and friends.",
+    "category": "wedding",
+    "location": "Grand Royal Palace, MG Road, Bengaluru",
+    "date": "2024-12-15",
+    "start_time": "19:00",
+    "end_time": "23:30",
+    "status": "upcoming",
+    "banner_url": "https://images.pexels.com/photos/265920/pexels-photo-265920.jpeg",
+    "is_public": false,
+    "max_attendees": 250
+  },
+  "ticket_tiers": [
+    {
+      "name": "Normal",
+      "price": 0,
+      "quantity": 150,
+      "description": "Family & Friends (Invitation only)"
+    },
+    {
+      "name": "VIP",
+      "price": 0,
+      "quantity": 60,
+      "description": "Close Family (Front seating)"
+    },
+    {
+      "name": "VVIP",
+      "price": 0,
+      "quantity": 40,
+      "description": "Immediate Family on Stage Area"
+    }
+  ],
+  "guests": [
+    {
+      "name": "Rohan Verma",
+      "email": "rohan@example.com",
+      "phone": "+91-9012345678",
+      "category": "friends",
+      "rsvp_status": "accepted",
+      "plus_ones": 1,
+      "table_number": "T12"
+    },
+    {
+      "name": "Priya Mehta",
+      "email": "priya@example.com",
+      "phone": "+91-9023456789",
+      "category": "family",
+      "rsvp_status": "pending",
+      "plus_ones": 0,
+      "table_number": "T05"
+    },
+    {
+      "name": "Mr. & Mrs. Kapoor",
+      "email": "kapoor.family@example.com",
+      "phone": "+91-9034567890",
+      "category": "vip",
+      "rsvp_status": "accepted",
+      "plus_ones": 2,
+      "table_number": "VIP-02"
+    }
+  ],
+  "menus": [
+    {
+      "name": "Wedding Dinner - Veg",
+      "type": "veg",
+      "description": "Traditional North Indian vegetarian dinner buffet",
+      "price_per_person": 900,
+      "items": [
+        {
+          "name": "Paneer Butter Masala",
+          "description": "Creamy tomato based paneer curry",
+          "category": "main",
+          "is_vegetarian": true,
+          "is_vegan": false,
+          "is_gluten_free": false,
+          "price": 250
+        },
+        {
+          "name": "Dal Makhani",
+          "description": "Slow cooked black lentils with cream & butter",
+          "category": "main",
+          "is_vegetarian": true,
+          "is_vegan": false,
+          "is_gluten_free": true,
+          "price": 180
+        },
+        {
+          "name": "Gulab Jamun",
+          "description": "Classic Indian dessert in sugar syrup",
+          "category": "dessert",
+          "is_vegetarian": true,
+          "is_vegan": false,
+          "is_gluten_free": false,
+          "price": 120
+        }
+      ]
+    },
+    {
+      "name": "Wedding Dinner - Non-Veg",
+      "type": "non-veg",
+      "description": "Signature non-vegetarian dishes",
+      "price_per_person": 1200,
+      "items": [
+        {
+          "name": "Murgh Malai Tikka",
+          "description": "Creamy marinated grilled chicken",
+          "category": "appetizer",
+          "is_vegetarian": false,
+          "is_vegan": false,
+          "is_gluten_free": true,
+          "price": 300
+        },
+        {
+          "name": "Mutton Rogan Josh",
+          "description": "Kashmiri style slow-cooked mutton curry",
+          "category": "main",
+          "is_vegetarian": false,
+          "is_vegan": false,
+          "is_gluten_free": false,
+          "price": 350
+        }
+      ]
+    }
+  ],
+  "planning_tasks": [
+    {
+      "title": "Finalize guest list",
+      "description": "Confirm all RSVPs and update final headcount",
+      "due_date": "2024-12-01",
+      "status": "pending"
+    },
+    {
+      "title": "Meet with decorator",
+      "description": "Finalize stage, entrance, and table decor",
+      "due_date": "2024-12-05",
+      "status": "pending"
+    },
+    {
+      "title": "Confirm photographer",
+      "description": "Sign contract and share shot list",
+      "due_date": "2024-12-03",
+      "status": "completed"
+    }
+  ]
+}

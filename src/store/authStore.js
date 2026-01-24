@@ -1,84 +1,36 @@
+// src/store/authStore.js
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 const useAuthStore = create(
   persist(
-    (set, get) => ({
-      user: null,
-      profile: null,
-      session: null,
-      isLoading: true,
+    (set) => ({
+      user: null,            // Supabase auth.user (or null)
+      profile: null,         // profiles row (or null)
+      session: null,         // Supabase session (or null)
       isAuthenticated: false,
-      isInitialized: false,
+      isLoading: false,      // we will NOT use loading gates for now
 
-      setUser: (user) => {
-        set({ user, isAuthenticated: !!user });
-      },
-
-      setProfile: (profile) => {
-        set({ profile });
-      },
-
-      setSession: (session) => {
-        set({ session, isAuthenticated: !!session });
-      },
-
-      setLoading: (isLoading) => {
-        set({ isLoading });
-      },
-
-      setInitialized: (isInitialized) => {
-        set({ isInitialized, isLoading: false });
-      },
-
-      login: (user, session, profile) => {
+      login: (user, session, profile) =>
         set({
           user,
           session,
           profile,
           isAuthenticated: true,
           isLoading: false,
-          isInitialized: true,
-        });
-      },
+        }),
 
-      logout: () => {
+      logout: () =>
         set({
           user: null,
           profile: null,
           session: null,
           isAuthenticated: false,
           isLoading: false,
-        });
-      },
+        }),
 
-      updateProfile: (profileData) => {
-        const currentProfile = get().profile;
-        set({
-          profile: { ...currentProfile, ...profileData },
-        });
-      },
-
-      getRole: () => {
-        const profile = get().profile;
-        return profile?.role || 'customer';
-      },
-
-      isAdmin: () => {
-        const profile = get().profile;
-        return profile?.role === 'admin';
-      },
-
-      isOrganizer: () => {
-        const profile = get().profile;
-        const role = profile?.role;
-        return role === 'organizer' || role === 'admin';
-      },
-
-      isVendor: () => {
-        const profile = get().profile;
-        return profile?.role === 'vendor';
-      },
+      setProfile: (profile) => set({ profile }),
+      setLoading: (isLoading) => set({ isLoading }),
     }),
     {
       name: 'eventsphere-auth',

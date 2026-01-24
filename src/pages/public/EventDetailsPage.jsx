@@ -30,22 +30,18 @@ function EventDetailsPage() {
   const { data: event, isLoading, error } = useEvent(id);
 
   const handleBookNow = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: 'Login Required',
-        description: 'Please login to book this event.',
-        variant: 'destructive',
-      });
-      navigate('/login', { state: { from: `/events/${id}` } });
-      return;
-    }
-    
-    // Navigate to booking page (to be implemented)
+  if (!isAuthenticated) {
     toast({
-      title: 'Coming Soon',
-      description: 'Booking functionality will be available soon.',
+      title: 'Login Required',
+      description: 'Please login to book this event.',
+      variant: 'destructive',
     });
-  };
+    navigate('/login', { state: { from: `/book/${id}` } });
+    return;
+  }
+  
+  navigate(`/book/${id}`);
+};
 
   const handleShare = async () => {
     const url = window.location.href;
