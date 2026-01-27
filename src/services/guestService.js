@@ -1,7 +1,7 @@
+// src/services/guestService.js
 import supabase from './supabaseClient';
 
-export const guestService = {
-  // Get all guests for an event
+const guestService = {
   async getGuests(eventId) {
     const { data, error } = await supabase
       .from('guests')
@@ -10,10 +10,9 @@ export const guestService = {
       .order('name', { ascending: true });
 
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
-  // Add a new guest
   async addGuest(guestData) {
     const { data, error } = await supabase
       .from('guests')
@@ -25,7 +24,6 @@ export const guestService = {
     return data;
   },
 
-  // Update a guest (RSVP, details)
   async updateGuest(guestId, updates) {
     const { data, error } = await supabase
       .from('guests')
@@ -38,7 +36,6 @@ export const guestService = {
     return data;
   },
 
-  // Delete a guest
   async deleteGuest(guestId) {
     const { error } = await supabase
       .from('guests')
@@ -48,7 +45,6 @@ export const guestService = {
     if (error) throw error;
   },
 
-  // Get Guest Statistics
   async getGuestStats(eventId) {
     const { data, error } = await supabase
       .from('guests')
@@ -58,31 +54,37 @@ export const guestService = {
     if (error) throw error;
 
     const stats = {
-      total_guests: 0, // includes plus ones
       total_invites: data.length,
       confirmed: 0,
-      declined: 0,
       pending: 0,
+      declined: 0,
     };
 
-    data.forEach((guest) => {
-      const partySize = 1 + (guest.plus_ones || 0);
-      
-      if (guest.rsvp_status === 'accepted') {
-        stats.confirmed += partySize;
-      } else if (guest.rsvp_status === 'declined') {
-        stats.declined += partySize; // usually 0 contribution if declined, but tracking intent
-      } else {
-        stats.pending += partySize;
-      }
-      
-      // Total count based on acceptance + pending (potential)
-      if (guest.rsvp_status !== 'declined') {
-        stats.total_guests += partySize;
-      }
+    data.forEach((g) => {
+      const status = g.rsvp_status || 'pending';
+      if (status === 'accepted') stats.confirmed += 1;
+      else if (status === 'declined') stats.declined += 1;
+      else stats.pending += 1;
     });
 
     return stats;
+  },
+
+  async toggleCheckin(guestId, checkedIn) {
+    const updates = {
+      checked_in: checkedIn,
+      checked_in_at: checkedIn ? new Date().toISOString() : null,
+    };
+
+    const { data, error } = await supabase
+      .from('guests')
+      .update(updates)
+      .eq('id', guestId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 };
 

@@ -13,6 +13,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import AccessibilityToolbar from '@/components/common/AccessibilityToolbar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,6 +126,7 @@ function Header({ onMenuClick }) {
 
         {/* Right side: theme + auth section */}
         <div className="flex items-center gap-4">
+          <AccessibilityToolbar />
           <ThemeToggle />
 
           {isAuthenticated ? (

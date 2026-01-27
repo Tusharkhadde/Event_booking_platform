@@ -13,6 +13,12 @@ import {
   CheckSquare,
   QrCode,
   ClipboardList,
+  DollarSign,
+  Car,
+  MessageCircle,
+  Grid3X3,
+  Ticket,
+  Palette 
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -264,6 +270,7 @@ function EventCard({ event, onEdit, onDelete, onViewPlanning, onStatusChange }) 
                 Manage Guests
               </Link>
             </DropdownMenuItem>
+
             <DropdownMenuItem asChild>
               <Link to={`/organizer/menus/${event.id}`}>
                 <Utensils className="mr-2 h-4 w-4" />
@@ -283,7 +290,54 @@ function EventCard({ event, onEdit, onDelete, onViewPlanning, onStatusChange }) 
                 Check-in
               </Link>
             </DropdownMenuItem>
-
+            <DropdownMenuItem asChild>
+              <Link to={`/organizer/messages/${event.id}`}>
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Messages
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+                <Link to={`/organizer/live-checkin/${event.id}`}>
+                  <QrCode className="mr-2 h-4 w-4" />
+                  Live Check-in
+                </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/organizer/budget/${event.id}`}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                Budget
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/organizer/transport/${event.id}`}>
+                <Car className="mr-2 h-4 w-4" />
+                Transport & Parking
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/organizer/seating/${event.id}`}>
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Seating Layout
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/organizer/tickets/${event.id}`}>
+                <Ticket className="mr-2 h-4 w-4" />
+                Manage Tickets
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/organizer/theme/${event.id}`}>
+                <Palette className="mr-2 h-4 w-4" />
+                Theme & Decoration
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/organizer/checklist/${event.id}`}>
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Checklist
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
 
             <DropdownMenuItem

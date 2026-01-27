@@ -9,18 +9,39 @@ import {
   Heart,
   Ticket,
   User,
+  Star,
 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEventReviews, useEventRatingSummary, useAddEventReview } from '@/hooks/useReviews';
+import { eventReviewSchema } from '@/validations/reviewSchema';
+import useAuthStore from '@/store/authStore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import { useEvent } from '@/hooks/useEvents';
 import { formatDate, formatDateTime, getStatusColor, getInitials } from '@/utils/helpers';
-import useAuthStore from '@/store/authStore';
 import EmptyState from '@/components/common/EmptyState';
 import { toast } from '@/hooks/useToast';
+import { EVENT_THEMES } from '@/data/themes';
+
+// Helper to map theme ID to data
+function getThemeById(themeId) {
+  if (!themeId) {
+    return null;
+  }
+  let found = null;
+  EVENT_THEMES.forEach((t) => {
+    if (t.id === themeId) {
+      found = t;
+    }
+  });
+  return found;
+}
 
 function EventDetailsPage() {
   const { id } = useParams();
@@ -28,20 +49,50 @@ function EventDetailsPage() {
   const { isAuthenticated } = useAuthStore();
   
   const { data: event, isLoading, error } = useEvent(id);
+  const { data: reviews, isLoading: reviewsLoading } = useEventReviews(id);
+  const { data: ratingSummary } = useEventRatingSummary(id);
+  const addReviewMutation = useAddEventReview(id);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors: reviewErrors },
+  } = useForm({
+    resolver: zodResolver(eventReviewSchema),
+    defaultValues: {
+      rating: 5,
+      comment: '',
+    },
+  });
+
+  const handleReviewSubmit = (values) => {
+    const ratingNumber = Number(values.rating);
+    addReviewMutation.mutate(
+      {
+        rating: ratingNumber,
+        comment: values.comment,
+      },
+      {
+        onSuccess: () => {
+          reset({ rating: 5, comment: '' });
+        },
+      }
+    );
+  };
 
   const handleBookNow = () => {
-  if (!isAuthenticated) {
-    toast({
-      title: 'Login Required',
-      description: 'Please login to book this event.',
-      variant: 'destructive',
-    });
-    navigate('/login', { state: { from: `/book/${id}` } });
-    return;
-  }
-  
-  navigate(`/book/${id}`);
-};
+    if (!isAuthenticated) {
+      toast({
+        title: 'Login Required',
+        description: 'Please login to book this event.',
+        variant: 'destructive',
+      });
+      navigate('/login', { state: { from: `/book/${id}` } });
+      return;
+    }
+    navigate(`/book/${id}`);
+  };
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -96,6 +147,9 @@ function EventDetailsPage() {
       </div>
     );
   }
+
+  // Get theme data after event is loaded
+  const theme = getThemeById(event?.theme_name);
 
   return (
     <div className="container py-8">
@@ -219,6 +273,45 @@ function EventDetailsPage() {
               </Card>
             </div>
           )}
+
+          {/* Theme & Decoration */}
+          {theme && (
+            <div className="mb-6">
+              <h2 className="mb-2 text-xl font-semibold">Theme & Decoration</h2>
+              <p className="text-sm text-muted-foreground mb-2">
+                {theme.description}
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs uppercase text-muted-foreground">
+                    Primary
+                  </span>
+                  <div
+                    className="h-6 w-6 rounded-full border"
+                    style={{ backgroundColor: theme.palette.primary }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs uppercase text-muted-foreground">
+                    Secondary
+                  </span>
+                  <div
+                    className="h-6 w-6 rounded-full border"
+                    style={{ backgroundColor: theme.palette.secondary }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs uppercase text-muted-foreground">
+                    Accent
+                  </span>
+                  <div
+                    className="h-6 w-6 rounded-full border"
+                    style={{ backgroundColor: theme.palette.accent }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -287,6 +380,160 @@ function EventDetailsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Reviews & Ratings Section */}
+      <section className="mt-10">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                  Reviews & Ratings
+                </CardTitle>
+                <CardDescription>
+                  Feedback from attendees
+                </CardDescription>
+              </div>
+              {ratingSummary && ratingSummary.count > 0 && (
+                <div className="text-right">
+                  <p className="text-3xl font-bold">
+                    {ratingSummary.average.toFixed(1)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Based on {ratingSummary.count} review
+                    {ratingSummary.count > 1 && 's'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Add review form */}
+            {isAuthenticated && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Leave a Review</p>
+                <form
+                  className="space-y-3"
+                  onSubmit={handleSubmit(handleReviewSubmit)}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground">
+                        Your rating:
+                      </span>
+                      <select
+                        className="h-8 rounded border bg-background text-sm px-2"
+                        {...register('rating')}
+                      >
+                        <option value={5}>⭐⭐⭐⭐⭐ 5</option>
+                        <option value={4}>⭐⭐⭐⭐ 4</option>
+                        <option value={3}>⭐⭐⭐ 3</option>
+                        <option value={2}>⭐⭐ 2</option>
+                        <option value={1}>⭐ 1</option>
+                      </select>
+                    </div>
+                    {reviewErrors.rating && (
+                      <p className="text-xs text-destructive">
+                        {reviewErrors.rating.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Textarea
+                      placeholder="Share your experience..."
+                      rows={3}
+                      {...register('comment')}
+                    />
+                    {reviewErrors.comment && (
+                      <p className="text-xs text-destructive">
+                        {reviewErrors.comment.message}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={addReviewMutation.isPending}
+                  >
+                    {addReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
+                  </Button>
+                </form>
+              </div>
+            )}
+
+            {!isAuthenticated && (
+              <p className="text-sm text-muted-foreground">
+                Please{' '}
+                <Button
+                  variant="link"
+                  className="px-1 text-sm"
+                  onClick={() => navigate('/login', { state: { from: `/events/${id}` } })}
+                >
+                  log in
+                </Button>
+                to leave a review.
+              </p>
+            )}
+
+            {/* Reviews list */}
+            {reviewsLoading && (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            )}
+
+            {!reviewsLoading && reviews && reviews.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No reviews yet. Be the first to share your experience.
+              </p>
+            )}
+
+            {!reviewsLoading && reviews && reviews.length > 0 && (
+              <div className="space-y-4">
+                {reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="border rounded-lg p-3 flex gap-3"
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="flex">
+                        {Array.from({ length: 5 }).map((_, idx) => {
+                          const filled = idx < review.rating;
+                          return (
+                            <Star
+                              key={idx}
+                              className={
+                                filled
+                                  ? 'h-4 w-4 text-yellow-500 fill-yellow-500'
+                                  : 'h-4 w-4 text-muted-foreground'
+                              }
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        {(review.user && review.user.name) || 'Anonymous'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {formatDate(review.created_at)}
+                      </p>
+                      {review.comment && (
+                        <p className="text-sm text-muted-foreground">
+                          {review.comment}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

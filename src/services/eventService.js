@@ -11,6 +11,7 @@ export const eventService = {
     if (error) throw error;
     return data;
   },
+  
 
   async getEvent(eventId) {
     const { data, error } = await supabase

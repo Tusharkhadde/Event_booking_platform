@@ -9,14 +9,22 @@ import {
   CreditCard,
   Bell,
   Heart,
+  Clock,
   PartyPopper,
   CheckSquare,
   X,
   MapPin,
   Utensils,
   Home,
+  BarChart,
   Star,
   HelpCircle,
+  Car,
+  Calendar as CalendarIcon,
+  Percent,
+  Wallet,
+  Shield,
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -40,6 +48,8 @@ function Sidebar({ isOpen, onClose }) {
         { to: '/saved', icon: Heart, label: 'Saved Events' },
         { to: '/notifications', icon: Bell, label: 'Notifications', badge: 2 },
         { to: '/profile', icon: Settings, label: 'Profile' },
+        { to: '/my-cancellations', icon: Clock, label: 'My Cancellations' },
+        { to: '/my-transport', icon: Car, label: 'My Transport' },
       ];
     }
 
@@ -52,6 +62,10 @@ function Sidebar({ isOpen, onClose }) {
         { to: '/admin/vendors', icon: Star, label: 'Vendors' },
         { to: '/admin/payments', icon: CreditCard, label: 'Payments' },
         { to: '/admin/settings', icon: Settings, label: 'Settings' },
+        { to: '/admin/vendors', icon: Shield, label: 'Vendors' },
+        { to: '/admin/reports', icon: BarChart, label: 'Reports' },
+        { to: '/admin/promos', icon: Percent, label: 'Promos' },
+        { to: '/admin/refunds', icon: Wallet, label: 'Refunds' },
       ];
     }
 
@@ -63,6 +77,7 @@ function Sidebar({ isOpen, onClose }) {
         { to: '/organizer/venues/create', icon: MapPin, label: 'Add Venue' },
         { to: '/notifications', icon: Bell, label: 'Notifications' },
         { to: '/profile', icon: Settings, label: 'Settings' },
+        { to: '/organizer/calendar', icon: CalendarIcon, label: 'Calendar' },
       ];
     }
 
@@ -75,6 +90,7 @@ function Sidebar({ isOpen, onClose }) {
         { to: '/vendor/calendar', icon: Calendar, label: 'Availability' },
         { to: '/notifications', icon: Bell, label: 'Notifications' },
         { to: '/profile', icon: Settings, label: 'Profile' },
+        { to: '/vendor/messages', icon: MessageCircle, label: 'Messages' },
       ];
     }
 
