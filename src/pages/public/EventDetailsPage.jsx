@@ -81,17 +81,58 @@ function EventDetailsPage() {
     );
   };
 
+  // const handleBookNow = () => {
+  //   if (!isAuthenticated) {
+  //     toast({
+  //       title: 'Login Required',
+  //       description: 'Please login to book this event.',
+  //       variant: 'destructive',
+  //     });
+  //     navigate('/login', { state: { from: `/book/${id}` } });
+  //     return;
+  //   }
+  //   navigate(`/book/${id}`);
+  // };
   const handleBookNow = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: 'Login Required',
-        description: 'Please login to book this event.',
-        variant: 'destructive',
-      });
-      navigate('/login', { state: { from: `/book/${id}` } });
-      return;
-    }
-    navigate(`/book/${id}`);
+    // Pass event data through navigation state
+    navigate(`/book/${event.id}`, { 
+      state: { 
+        event: {
+          ...event,
+          // Ensure ticket_types are included
+          ticket_types: event.ticket_types || [
+            {
+              id: 'vip',
+              name: 'VIP Pass',
+              type: 'vip',
+              description: 'Premium experience with exclusive benefits',
+              price: 199.99,
+              originalPrice: 249.99,
+              features: ['Front Row Seats', 'Meet & Greet', 'Exclusive Merch'],
+              available: 50,
+            },
+            {
+              id: 'premium',
+              name: 'Premium',
+              type: 'premium',
+              description: 'Great seats with premium benefits',
+              price: 149.99,
+              features: ['Priority Seating', 'Complimentary Drinks'],
+              available: 100,
+            },
+            {
+              id: 'regular',
+              name: 'General Admission',
+              type: 'regular',
+              description: 'Standard entry to the event',
+              price: 79.99,
+              features: ['General Seating', 'Event Access'],
+              available: 500,
+            },
+          ],
+        } 
+      } 
+    });
   };
 
   const handleShare = async () => {

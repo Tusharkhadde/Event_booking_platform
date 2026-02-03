@@ -480,8 +480,9 @@ function SavedEventListCard({ event, onRemove }) {
             <div className="mt-auto flex items-center gap-2">
               <Button asChild>
                 <Link to={`/book/${event.id}`}>
-                  <Ticket className="mr-2 h-4 w-4" />
-                  Book Now
+                  <AnimatedButton className="px-4 py-1.5 text-sm">
+                    Book Now
+                  </AnimatedButton>
                 </Link>
               </Button>
               <Button variant="outline" asChild>

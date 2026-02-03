@@ -1,731 +1,952 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Calendar,
-  MapPin,
-  Clock,
-  Ticket,
-  Users,
-  CreditCard,
-  Check,
-  Minus,
-  Plus,
-  Info,
-} from 'lucide-react';
-import { useValidatePromo } from '@/hooks/usePromos';
-import { useTickets } from '@/hooks/useTickets';
-import { useCreateBooking } from '@/hooks/useBookings';
+// src/pages/user/BookEventPage.jsx
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
+
+// Components
+import { TicketSelection } from '@/components/booking/TicketSelection';
+import { SeatMap } from '@/components/booking/SeatMap';
+import { MockPaymentForm } from '@/components/payment/MockPaymentForm';
+import { GlowingOrderSummary } from '@/components/payment/GlowingOrderSummary';
+import { DigitalTicket } from '@/components/tickets/DigitalTicket';
+
+// UI Components
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useEvent } from '@/hooks/useEvents';
-import { formatDate, formatCurrency } from '@/utils/helpers';
-import { toast } from '@/hooks/useToast';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import useAuthStore from '@/store/authStore';
-import notificationService from '@/services/notificationService';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { GradientText } from '@/components/ui/gradient-text';
+import { AnimatedGradientBorder } from '@/components/ui/animated-gradient-border';
+import { ParticleButton } from '@/components/ui/particle-button';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
 
-function BookEventPage() {
+// Icons
+import {
+  ArrowLeft,
+  ArrowRight,
+  Ticket,
+  MapPin,
+  CreditCard,
+  CheckCircle,
+  Calendar,
+  Clock,
+  User,
+  Mail,
+  Phone,
+  Sparkles,
+  Download,
+  PartyPopper,
+  QrCode,
+  Share2,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
+
+// Services
+import {
+  createBooking,
+  processBookingPayment,
+} from '@/services/bookingService';
+import { toast } from 'sonner';
+import { cn } from '@/utils/cn';
+
+// Default ticket types - Used when event doesn't have specific tickets
+const DEFAULT_TICKET_TYPES = [
+  {
+    id: 'vip',
+    name: 'VIP Pass',
+    type: 'vip',
+    description: 'Front row seats, meet & greet, exclusive merch',
+    price: 199.99,
+    originalPrice: 249.99,
+    features: ['Front Row Seats', 'Meet & Greet', 'Exclusive Merch', 'VIP Lounge'],
+    available: 50,
+    maxPerOrder: 4,
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    type: 'premium',
+    description: 'Great seats with premium benefits',
+    price: 149.99,
+    originalPrice: 179.99,
+    features: ['Priority Seating', 'Complimentary Drinks', 'Fast Track Entry'],
+    available: 100,
+    maxPerOrder: 6,
+  },
+  {
+    id: 'regular',
+    name: 'General Admission',
+    type: 'regular',
+    description: 'Standard entry to the event',
+    price: 79.99,
+    features: ['General Seating', 'Event Access'],
+    available: 500,
+    maxPerOrder: 10,
+  },
+  {
+    id: 'student',
+    name: 'Student',
+    type: 'student',
+    description: 'Discounted tickets for students (ID required)',
+    price: 49.99,
+    features: ['General Seating', 'Valid Student ID Required'],
+    available: 100,
+    maxPerOrder: 2,
+  },
+];
+
+// Mock event data - Used when no event is passed
+const MOCK_EVENT = {
+  id: 'demo-event-1',
+  title: 'Tech Conference 2024',
+  description: 'The biggest tech event of the year featuring industry leaders and innovators.',
+  date: '2024-12-15',
+  time: '10:00 AM',
+  end_time: '6:00 PM',
+  location: 'Convention Center, New York',
+  address: '123 Main Street, New York, NY 10001',
+  image_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop',
+  organizer: 'TechCorp Inc.',
+  category: 'Technology',
+  has_seating: true,
+  ticket_types: DEFAULT_TICKET_TYPES,
+};
+
+// Steps configuration
+const STEPS = [
+  { id: 'tickets', title: 'Select Tickets', icon: Ticket },
+  { id: 'seats', title: 'Choose Seats', icon: MapPin },
+  { id: 'payment', title: 'Payment', icon: CreditCard },
+  { id: 'confirmation', title: 'Confirmation', icon: CheckCircle },
+];
+
+const BookEventPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Get logged-in user and auth state
-  const { user, isAuthenticated } = useAuthStore();
+  // Get event from navigation state or use mock
+  const passedEvent = location.state?.event;
 
-  // Fetch event data
-  const { data: event, isLoading, error } = useEvent(eventId);
-
-  // Fetch tickets from Supabase
-  const { data: tickets, isLoading: ticketsLoading } = useTickets(eventId);
-
-  // Booking mutation
-  const createBookingMutation = useCreateBooking();
-
-  // Compute overall loading state
-  const loading = isLoading || ticketsLoading;
-
-  const [step, setStep] = useState(1);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [quantity, setQuantity] = useState(1);
-  const [promoCode, setPromoCode] = useState('');
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [appliedPromo, setAppliedPromo] = useState(null);
-  
-  // Attendee details
-  const [attendeeDetails, setAttendeeDetails] = useState({
-    firstName: '',
-    lastName: '',
+  // State
+  const [loading, setLoading] = useState(true);
+  const [event, setEvent] = useState(null);
+  const [ticketTypes, setTicketTypes] = useState([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [selectedTickets, setSelectedTickets] = useState({});
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [billingDetails, setBillingDetails] = useState({
+    name: '',
     email: '',
     phone: '',
   });
+  const [discount, setDiscount] = useState(0);
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [booking, setBooking] = useState(null);
+  const [generatedTickets, setGeneratedTickets] = useState([]);
+  const [selectedViewTicket, setSelectedViewTicket] = useState(null);
 
-  const validatePromoMutation = useValidatePromo();
+  // Load event data
+  useEffect(() => {
+    const loadEvent = async () => {
+      setLoading(true);
+      
+      try {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-  const handleQuantityChange = (delta) => {
-    const newQty = quantity + delta;
-    if (newQty >= 1 && newQty <= 10) {
-      setQuantity(newQty);
-    }
-  };
+        let eventData;
+        let tickets;
 
-  // Helper function to find selected ticket from Supabase tickets
-  const getSelectedTicket = () => {
-    if (!selectedTicket || !tickets) {
-      return null;
-    }
-    let foundTicket = null;
-    tickets.forEach((t) => {
-      if (t.id === selectedTicket) {
-        foundTicket = t;
+        if (passedEvent) {
+          // Use passed event from navigation
+          eventData = passedEvent;
+          tickets = passedEvent.ticket_types || DEFAULT_TICKET_TYPES;
+        } else if (eventId && eventId !== 'demo') {
+          // TODO: Fetch event from API
+          // const response = await getEvent(eventId);
+          // eventData = response;
+          
+          // For now, use mock with the eventId
+          eventData = { ...MOCK_EVENT, id: eventId };
+          tickets = DEFAULT_TICKET_TYPES;
+        } else {
+          // Use demo event
+          eventData = MOCK_EVENT;
+          tickets = DEFAULT_TICKET_TYPES;
+        }
+
+        setEvent(eventData);
+        setTicketTypes(tickets);
+        
+        console.log('Event loaded:', eventData);
+        console.log('Ticket types:', tickets);
+        
+      } catch (error) {
+        console.error('Error loading event:', error);
+        toast.error('Failed to load event details');
+      } finally {
+        setLoading(false);
       }
-    });
-    return foundTicket;
+    };
+
+    loadEvent();
+  }, [eventId, passedEvent]);
+
+  // Calculate totals
+  const calculateTotals = () => {
+    const items = Object.entries(selectedTickets)
+      .filter(([_, qty]) => qty > 0)
+      .map(([id, qty]) => {
+        const ticketType = ticketTypes.find(t => t.id === id);
+        if (!ticketType) return null;
+        
+        return {
+          id: ticketType.id,
+          type: ticketType.type,
+          name: ticketType.name,
+          price: ticketType.price,
+          quantity: qty,
+          total: ticketType.price * qty,
+        };
+      })
+      .filter(Boolean);
+
+    const subtotal = items.reduce((sum, t) => sum + t.total, 0);
+    const taxAmount = (subtotal - discount) * 0.05; // 5% tax
+    const total = subtotal - discount + taxAmount;
+
+    return { 
+      tickets: items, 
+      subtotal, 
+      tax: taxAmount, 
+      total,
+      ticketCount: items.reduce((sum, t) => sum + t.quantity, 0),
+    };
   };
 
-  const handleApplyPromo = () => {
-    if (!promoCode) {
-      toast({
-        title: 'Promo code required',
-        description: 'Please enter a promo code.',
-        variant: 'destructive',
-      });
-      return;
+  const { tickets: ticketItems, subtotal, tax, total, ticketCount } = calculateTotals();
+
+  // Check if event requires seating
+  const requiresSeating = event?.has_seating && ticketCount > 0;
+
+  // Determine if we should skip seat selection
+  const shouldSkipSeats = !requiresSeating;
+
+  // Navigation helpers
+  const canGoNext = () => {
+    switch (currentStep) {
+      case 0: // Ticket Selection
+        return ticketCount > 0;
+      case 1: // Seat Selection
+        if (shouldSkipSeats) return true;
+        return selectedSeats.length === ticketCount;
+      case 2: // Payment
+        return false; // Payment handles its own flow
+      default:
+        return false;
     }
+  };
 
-    if (!selectedTicket) {
-      toast({
-        title: 'Select a ticket first',
-        description: 'Choose a ticket type before applying a promo.',
-        variant: 'destructive',
-      });
-      return;
+  const goNext = () => {
+    if (!canGoNext()) return;
+
+    if (currentStep === 0 && shouldSkipSeats) {
+      // Skip seat selection
+      setCurrentStep(2);
+    } else {
+      setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
     }
+  };
 
-    const ticket = getSelectedTicket();
-    if (!ticket) {
-      toast({
-        title: 'No ticket selected',
-        description: 'Select a valid ticket type.',
-        variant: 'destructive',
-      });
-      return;
+  const goBack = () => {
+    if (currentStep === 2 && shouldSkipSeats) {
+      // Go back to ticket selection, skipping seats
+      setCurrentStep(0);
+    } else {
+      setCurrentStep(prev => Math.max(prev - 1, 0));
     }
+  };
 
-    const subtotal = Number(ticket.price || 0) * quantity;
+  // Handle discount
+  const handleDiscountApplied = (discountAmount, promoData) => {
+    setDiscount(discountAmount);
+    if (promoData) {
+      setAppliedPromo(promoData);
+    }
+  };
 
-    validatePromoMutation.mutate(
-      { code: promoCode, eventId: eventId, subtotal },
-      {
-        onSuccess: (result) => {
-          setAppliedPromo(result.promo);
-          setDiscountAmount(result.discountAmount);
-          toast({
-            title: 'Promo applied',
-            description: `You saved ${formatCurrency(result.discountAmount)}.`,
-            variant: 'success',
-          });
+  // Handle payment success
+  const handlePaymentSuccess = async (paymentResult) => {
+    setProcessing(true);
+
+    try {
+      // Create booking
+      const bookingData = await createBooking({
+        userId: 'user_123', // Replace with actual user ID
+        eventId: event.id,
+        event: {
+          title: event.title,
+          date: event.date,
+          time: event.time,
+          location: event.location,
+          image_url: event.image_url,
         },
-      }
-    );
-  };
-
-  const calculateSubtotal = () => {
-    if (!selectedTicket || !tickets) {
-      return 0;
-    }
-    let foundTicket = null;
-    tickets.forEach((t) => {
-      if (t.id === selectedTicket) {
-        foundTicket = t;
-      }
-    });
-    if (!foundTicket) {
-      return 0;
-    }
-    const price = Number(foundTicket.price || 0);
-    return price * quantity;
-  };
-
-  const calculateTotal = () => {
-    const subtotal = calculateSubtotal();
-    const serviceFee = subtotal * 0.05;
-    const appliedDiscount = discountAmount || 0;
-    const total = subtotal - appliedDiscount + serviceFee;
-    if (total < 0) {
-      return 0;
-    }
-    return total;
-  };
-
-  const handleProceed = () => {
-    if (step === 1 && !selectedTicket) {
-      toast({
-        title: 'Select a Ticket',
-        description: 'Please select a ticket type to continue.',
-        variant: 'destructive',
+        tickets: ticketItems,
+        selectedSeats,
+        subtotal,
+        discount,
+        tax,
+        total,
+        promoCode: appliedPromo?.code,
+        billingDetails,
+        paymentMethod: 'card',
       });
-      return;
-    }
-    if (step < 4) {
-      setStep(step + 1);
+
+      // Process payment and generate tickets
+      const result = await processBookingPayment(bookingData.id, paymentResult);
+
+      setBooking(result.booking);
+      setGeneratedTickets(result.tickets);
+
+      // Celebrate! 🎉
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#a855f7', '#ec4899', '#6366f1', '#22c55e', '#f59e0b'],
+      });
+
+      // Move to confirmation
+      setCurrentStep(3);
+      toast.success('Payment successful! Your tickets are ready.');
+
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      toast.error(error.message || 'Failed to process booking');
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const handleConfirmBooking = async () => {
-    // Check authentication
-    if (!isAuthenticated) {
-      toast({
-        title: 'Login required',
-        description: 'Please log in to confirm your booking.',
-        variant: 'destructive',
-      });
-      navigate('/login', { state: { from: `/book/${eventId}` } });
-      return;
-    }
-
-    // Check ticket selection
-    if (!selectedTicket || !tickets) {
-      toast({
-        title: 'Select a ticket',
-        description: 'Please select a ticket type before confirming.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Find the selected ticket
-    let foundTicket = null;
-    tickets.forEach((t) => {
-      if (t.id === selectedTicket) {
-        foundTicket = t;
-      }
-    });
-
-    if (!foundTicket) {
-      toast({
-        title: 'Invalid ticket',
-        description: 'Selected ticket type is not available.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Check available quantity
-    if (foundTicket.available_qty < quantity) {
-      toast({
-        title: 'Not enough tickets',
-        description: `Only ${foundTicket.available_qty} tickets available.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const unitPrice = Number(foundTicket.price || 0);
-    const totalAmount = calculateTotal();
-
-    // Create the booking
-    createBookingMutation.mutate(
-      {
-        eventId: eventId,
-        ticketId: foundTicket.id,
-        qty: quantity,
-        unitPrice,
-        totalAmount,
-        promoId: appliedPromo?.id || null,
-        discountAmount: discountAmount || 0,
-        attendeeDetails: {
-          firstName: attendeeDetails.firstName,
-          lastName: attendeeDetails.lastName,
-          email: attendeeDetails.email,
-          phone: attendeeDetails.phone,
-        },
-      },
-      {
-        onSuccess: async (booking) => {
-          // Create notification for successful booking
-          try {
-            if (user && event) {
-              await notificationService.createNotification({
-                user_id: user.id,
-                title: 'Booking Confirmed',
-                message: `Your booking for "${event.title}" on ${formatDate(event.date)} is confirmed.`,
-                type: 'booking',
-                data: {
-                  event_id: event.id,
-                  booking_id: booking?.id,
-                  date: event.date,
-                },
-              });
-            }
-          } catch (notifError) {
-            console.error('Failed to create notification:', notifError);
-          }
-
-          // Move to confirmation step
-          setStep(4);
-        },
-        onError: (error) => {
-          toast({
-            title: 'Booking failed',
-            description: error.message || 'Failed to create booking. Please try again.',
-            variant: 'destructive',
-          });
-        },
-      }
-    );
+  // Handle payment error
+  const handlePaymentError = (error) => {
+    console.error('Payment error:', error);
+    toast.error(error.message || 'Payment failed. Please try again.');
   };
 
-  const handleAttendeeChange = (field, value) => {
-    setAttendeeDetails((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  // Progress percentage
+  const progressPercentage = ((currentStep + 1) / STEPS.length) * 100;
 
+  // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading event details..." />
+      <div className="min-h-screen bg-slate-950 py-8">
+        <div className="container max-w-6xl mx-auto px-4">
+          <div className="space-y-8">
+            <Skeleton className="h-10 w-64 bg-slate-800" />
+            <Skeleton className="h-24 w-full bg-slate-800 rounded-xl" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-4">
+                <Skeleton className="h-48 w-full bg-slate-800 rounded-xl" />
+                <Skeleton className="h-48 w-full bg-slate-800 rounded-xl" />
+              </div>
+              <Skeleton className="h-96 w-full bg-slate-800 rounded-xl" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-16">
-        <p className="text-destructive">Failed to load event details</p>
-        <Button onClick={() => navigate('/events')} className="mt-4">
-          Browse Events
-        </Button>
-      </div>
-    );
-  }
-
+  // No event found
   if (!event) {
     return (
-      <div className="text-center py-16">
-        <p>Event not found</p>
-        <Button onClick={() => navigate('/events')} className="mt-4">
-          Browse Events
-        </Button>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
+          <h1 className="text-2xl font-bold text-white">Event Not Found</h1>
+          <p className="text-slate-400">The event you're looking for doesn't exist.</p>
+          <Button onClick={() => navigate('/events')}>
+            Browse Events
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // Get selected ticket details for display
-  const currentTicket = getSelectedTicket();
-
   return (
-    <div className="container max-w-4xl py-8">
-      {/* Back Button */}
-      <Link
-        to={`/events/${eventId}`}
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Event
-      </Link>
-
-      {/* Event Summary */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex gap-4">
-            <img
-              src={event.banner_url || event.image || '/placeholder-event.jpg'}
-              alt={event.title}
-              className="w-24 h-24 object-cover rounded-lg"
-            />
-            <div className="flex-1">
-              <h1 className="text-xl font-bold">{event.title}</h1>
-              <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {formatDate(event.date)}
-                </div>
-                {(event.start_time || event.time) && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {event.start_time || event.time}
-                  </div>
-                )}
-                {(event.location || event.venue) && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {event.location || event.venue}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Progress Steps */}
-      <div className="flex items-center justify-between mb-8">
-        {[
-          { num: 1, label: 'Select Tickets', icon: Ticket },
-          { num: 2, label: 'Your Details', icon: Users },
-          { num: 3, label: 'Payment', icon: CreditCard },
-          { num: 4, label: 'Confirmation', icon: Check },
-        ].map((s, index) => (
-          <div key={s.num} className="flex items-center">
-            <div
-              className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                step >= s.num
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              <s.icon className="h-5 w-5" />
-            </div>
-            <span
-              className={`ml-2 text-sm hidden sm:inline ${
-                step >= s.num ? 'text-foreground font-medium' : 'text-muted-foreground'
-              }`}
-            >
-              {s.label}
-            </span>
-            {index < 3 && (
-              <div
-                className={`w-12 sm:w-24 h-0.5 mx-2 ${
-                  step > s.num ? 'bg-primary' : 'bg-muted'
-                }`}
-              />
-            )}
-          </div>
-        ))}
+    <div className="min-h-screen bg-slate-950">
+      {/* Background effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Step 1: Select Tickets */}
-          {step === 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Your Tickets</CardTitle>
-                <CardDescription>
-                  Choose the ticket type that suits you best
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {(!tickets || tickets.length === 0) && (
-                  <p className="text-sm text-muted-foreground">
-                    No tickets configured yet for this event.
-                  </p>
-                )}
+      <div className="relative container max-w-6xl mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            variant="ghost"
+            className="text-slate-400 hover:text-white"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
 
-                {tickets && tickets.length > 0 && (
-                  <RadioGroup value={selectedTicket} onValueChange={setSelectedTicket}>
-                    <div className="space-y-4">
-                      {tickets.map((ticket) => (
-                        <div
-                          key={ticket.id}
-                          className={
-                            selectedTicket === ticket.id
-                              ? 'relative rounded-lg border-2 border-primary bg-primary/5 p-4 cursor-pointer'
-                              : 'relative rounded-lg border-2 border-border p-4 cursor-pointer hover:border-primary/50'
-                          }
-                          onClick={() => setSelectedTicket(ticket.id)}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              <RadioGroupItem
-                                value={ticket.id}
-                                id={ticket.id}
-                                className="mt-1"
-                              />
-                              <div>
-                                <Label
-                                  htmlFor={ticket.id}
-                                  className="text-lg font-semibold cursor-pointer"
-                                >
-                                  {ticket.type || ticket.name}
-                                </Label>
-                                {ticket.description && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {ticket.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-primary">
-                                {formatCurrency(ticket.price)}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {ticket.available_qty} available
-                              </p>
-                            </div>
+          {/* Step indicator */}
+          <div className="hidden md:flex items-center gap-2">
+            {STEPS.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = index === currentStep;
+              const isCompleted = index < currentStep;
+
+              return (
+                <React.Fragment key={step.id}>
+                  <div
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors',
+                      isActive && 'bg-purple-500/20 text-purple-400',
+                      isCompleted && 'text-emerald-400',
+                      !isActive && !isCompleted && 'text-slate-500'
+                    )}
+                  >
+                    {isCompleted ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <Icon className="w-4 h-4" />
+                    )}
+                    <span className="hidden lg:inline">{step.title}</span>
+                  </div>
+                  {index < STEPS.length - 1 && (
+                    <div className={cn(
+                      'w-8 h-0.5 rounded',
+                      index < currentStep ? 'bg-emerald-500' : 'bg-slate-700'
+                    )} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Mobile progress */}
+          <div className="md:hidden flex items-center gap-2">
+            <span className="text-sm text-slate-400">
+              Step {currentStep + 1}/{STEPS.length}
+            </span>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mb-8">
+          <Progress value={progressPercentage} className="h-1 bg-slate-800" />
+        </div>
+
+        {/* Event Banner (shown during booking steps) */}
+        {currentStep < 3 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  {event.image_url ? (
+                    <img
+                      src={event.image_url}
+                      alt={event.title}
+                      className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-8 h-8 text-white" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-bold text-white text-lg truncate">
+                      {event.title}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(event.date).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        {event.time}
+                      </span>
+                      <span className="flex items-center gap-1 truncate">
+                        <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">{event.location}</span>
+                      </span>
+                    </div>
+                  </div>
+                  {ticketCount > 0 && (
+                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 flex-shrink-0">
+                      <Ticket className="w-3 h-3 mr-1" />
+                      {ticketCount} ticket{ticketCount !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Steps */}
+          <div className="lg:col-span-2">
+            <AnimatePresence mode="wait">
+              {/* Step 1: Ticket Selection */}
+              {currentStep === 0 && (
+                <motion.div
+                  key="step-tickets"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                        <Ticket className="w-5 h-5 text-white" />
+                      </div>
+                      Select Your Tickets
+                    </h2>
+                    <p className="text-slate-400 mt-2">
+                      Choose the ticket types and quantities you want to purchase.
+                    </p>
+                  </div>
+
+                  <TicketSelection
+                    ticketTypes={ticketTypes}
+                    selectedTickets={selectedTickets}
+                    onTicketChange={setSelectedTickets}
+                    maxTickets={10}
+                  />
+                </motion.div>
+              )}
+
+              {/* Step 2: Seat Selection */}
+              {currentStep === 1 && (
+                <motion.div
+                  key="step-seats"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-white" />
+                      </div>
+                      Choose Your Seats
+                    </h2>
+                    <p className="text-slate-400 mt-2">
+                      Select {ticketCount} seat{ticketCount !== 1 ? 's' : ''} from the venue map below.
+                    </p>
+                  </div>
+
+                  <SeatMap
+                    eventId={event.id}
+                    maxSeats={ticketCount}
+                    selectedSeats={selectedSeats}
+                    onSeatSelect={setSelectedSeats}
+                  />
+                </motion.div>
+              )}
+
+              {/* Step 3: Payment */}
+              {currentStep === 2 && (
+                <motion.div
+                  key="step-payment"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
+                >
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                        <CreditCard className="w-5 h-5 text-white" />
+                      </div>
+                      Payment Details
+                    </h2>
+                    <p className="text-slate-400 mt-2">
+                      Enter your billing information and complete the payment.
+                    </p>
+                  </div>
+
+                  {/* Billing Details */}
+                  <AnimatedGradientBorder>
+                    <div className="p-6 space-y-4">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <User className="w-5 h-5 text-purple-400" />
+                        Billing Information
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-slate-300">Full Name *</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              placeholder="John Doe"
+                              value={billingDetails.name}
+                              onChange={(e) =>
+                                setBillingDetails(prev => ({ ...prev, name: e.target.value }))
+                              }
+                              className="bg-slate-800/80 border-slate-700 text-white h-12 pl-10"
+                            />
                           </div>
                         </div>
+                        <div className="space-y-2">
+                          <Label className="text-slate-300">Email *</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              type="email"
+                              placeholder="john@example.com"
+                              value={billingDetails.email}
+                              onChange={(e) =>
+                                setBillingDetails(prev => ({ ...prev, email: e.target.value }))
+                              }
+                              className="bg-slate-800/80 border-slate-700 text-white h-12 pl-10"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-slate-300">Phone Number</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                          <Input
+                            type="tel"
+                            placeholder="+1 555 123 4567"
+                            value={billingDetails.phone}
+                            onChange={(e) =>
+                              setBillingDetails(prev => ({ ...prev, phone: e.target.value }))
+                            }
+                            className="bg-slate-800/80 border-slate-700 text-white h-12 pl-10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </AnimatedGradientBorder>
+
+                  {/* Payment Form */}
+                  <div className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-2xl p-6">
+                    <MockPaymentForm
+                      amount={total}
+                      currency="USD"
+                      onSuccess={handlePaymentSuccess}
+                      onError={handlePaymentError}
+                    />
+                  </div>
+
+                  {/* Demo Info */}
+                  <Card className="bg-slate-800/30 border-slate-700">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Sparkles className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-white">Demo Mode</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Use test card <code className="text-purple-400 bg-slate-800 px-1 rounded">4242 4242 4242 4242</code> with any expiry date and CVV.
+                            <br />
+                            Try promo codes: <code className="text-emerald-400">DEMO</code>, <code className="text-emerald-400">SAVE10</code>, <code className="text-emerald-400">VIP25</code>
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {/* Step 4: Confirmation */}
+              {currentStep === 3 && (
+                <motion.div
+                  key="step-confirmation"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-center py-8"
+                >
+                  {/* Success Icon */}
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', delay: 0.2, stiffness: 200 }}
+                    className="relative inline-block mb-8"
+                  >
+                    <div className="absolute inset-0 bg-emerald-500 rounded-full blur-2xl opacity-30 animate-pulse" />
+                    <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                      <CheckCircle className="w-12 h-12 text-white" />
+                    </div>
+                    {/* Decorative particles */}
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                      className="absolute -inset-4"
+                    >
+                      {[...Array(6)].map((_, i) => (
+                        <Sparkles
+                          key={i}
+                          className="absolute w-4 h-4 text-yellow-400"
+                          style={{
+                            top: `${50 + 40 * Math.sin((i * Math.PI) / 3)}%`,
+                            left: `${50 + 40 * Math.cos((i * Math.PI) / 3)}%`,
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                        />
                       ))}
-                    </div>
-                  </RadioGroup>
-                )}
+                    </motion.div>
+                  </motion.div>
 
-                {/* Quantity Selector */}
-                {selectedTicket && (
-                  <div className="mt-6 flex items-center justify-between p-4 bg-muted rounded-lg">
-                    <span className="font-medium">Number of Tickets</span>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleQuantityChange(-1)}
-                        disabled={quantity <= 1}
+                  {/* Success Message */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <h2 className="text-3xl font-bold text-white mb-2">
+                      Booking Confirmed!
+                    </h2>
+                    <GradientText
+                      className="text-xl font-semibold"
+                      colors="from-emerald-400 via-cyan-400 to-purple-400"
+                    >
+                      Your tickets are ready
+                    </GradientText>
+                  </motion.div>
+
+                  {/* Booking Reference */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="mt-6 mb-8"
+                  >
+                    <p className="text-slate-400">Booking Reference</p>
+                    <p className="font-mono text-2xl font-bold text-white mt-1">
+                      {booking?.booking_reference}
+                    </p>
+                  </motion.div>
+
+                  {/* Generated Tickets */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="grid gap-3 max-w-lg mx-auto mb-8"
+                  >
+                    {generatedTickets.map((ticket, index) => (
+                      <motion.div
+                        key={ticket.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1 }}
                       >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="text-xl font-semibold w-8 text-center">
-                        {quantity}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleQuantityChange(1)}
-                        disabled={quantity >= 10 || (currentTicket && quantity >= currentTicket.available_qty)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter>
-                <Button onClick={handleProceed} className="w-full" disabled={!selectedTicket}>
-                  Continue to Details
-                </Button>
-              </CardFooter>
-            </Card>
-          )}
+                        <Card className="bg-slate-900 border-slate-700 overflow-hidden hover:border-purple-500/50 transition-colors cursor-pointer"
+                          onClick={() => setSelectedViewTicket(ticket)}
+                        >
+                          <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500" />
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                                  <QrCode className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="text-left">
+                                  <p className="font-mono text-sm text-white font-medium">
+                                    {ticket.ticket_code}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {ticket.ticket_name}
+                                    {ticket.seat && ` • Seat ${ticket.seat.id}`}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700"
+                              >
+                                View
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
 
-          {/* Step 2: Attendee Details */}
-          {step === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendee Details</CardTitle>
-                <CardDescription>
-                  Please provide the details for the ticket holder
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      placeholder="John"
-                      value={attendeeDetails.firstName}
-                      onChange={(e) => handleAttendeeChange('firstName', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      placeholder="Doe"
-                      value={attendeeDetails.lastName}
-                      onChange={(e) => handleAttendeeChange('lastName', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={attendeeDetails.email}
-                    onChange={(e) => handleAttendeeChange('email', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1 (555) 000-0000"
-                    value={attendeeDetails.phone}
-                    onChange={(e) => handleAttendeeChange('phone', e.target.value)}
-                  />
-                </div>
-
-                {/* Promo Code Section */}
-                <div className="pt-4 border-t">
-                  <Label htmlFor="promoCode">Promo Code (Optional)</Label>
-                  <div className="flex gap-2 mt-2">
-                    <Input
-                      id="promoCode"
-                      placeholder="Enter promo code"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                      disabled={!!appliedPromo}
-                    />
+                  {/* Action Buttons */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="flex flex-col sm:flex-row gap-4 justify-center"
+                  >
+                    <ShimmerButton
+                      onClick={() => {
+                        if (generatedTickets.length > 0) {
+                          setSelectedViewTicket(generatedTickets[0]);
+                        }
+                      }}
+                      className="px-8"
+                    >
+                      <QrCode className="w-5 h-5 mr-2" />
+                      View Tickets
+                    </ShimmerButton>
+                    
                     <Button
                       variant="outline"
-                      onClick={handleApplyPromo}
-                      disabled={validatePromoMutation.isPending || !!appliedPromo}
+                      className="border-slate-700 text-white hover:bg-slate-800"
+                      onClick={() => navigate('/user/tickets')}
                     >
-                      {validatePromoMutation.isPending ? 'Applying...' : 'Apply'}
+                      <Ticket className="w-4 h-4 mr-2" />
+                      My Tickets
                     </Button>
-                  </div>
-                  {appliedPromo && (
-                    <p className="text-sm text-green-600 mt-2">
-                      ✓ Promo "{appliedPromo.code}" applied - You save{' '}
-                      {formatCurrency(discountAmount)}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                  Back
-                </Button>
-                <Button onClick={handleProceed} className="flex-1">
-                  Continue to Payment
-                </Button>
-              </CardFooter>
-            </Card>
-          )}
+                    
+                    <Button
+                      variant="outline"
+                      className="border-slate-700 text-white hover:bg-slate-800"
+                      onClick={() => navigate('/events')}
+                    >
+                      Browse Events
+                    </Button>
+                  </motion.div>
 
-          {/* Step 3: Payment */}
-          {step === 3 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Details</CardTitle>
-                <CardDescription>
-                  Enter your payment information to complete the booking
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cardNumber">Card Number</Label>
-                  <Input id="cardNumber" placeholder="1234 5678 9012 3456" />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="expiry">Expiry Date</Label>
-                    <Input id="expiry" placeholder="MM/YY" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cvv">CVV</Label>
-                    <Input id="cvv" placeholder="123" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cardName">Name on Card</Label>
-                  <Input id="cardName" placeholder="John Doe" />
-                </div>
-
-                <div className="flex items-start gap-2 p-4 bg-muted rounded-lg">
-                  <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <p className="text-sm text-muted-foreground">
-                    Your payment information is encrypted and secure. We never store your
-                    full card details.
-                  </p>
-                </div>
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-                  Back
-                </Button>
-                <Button
-                  onClick={handleConfirmBooking}
-                  className="flex-1"
-                  disabled={createBookingMutation.isPending}
-                >
-                  {createBookingMutation.isPending
-                    ? 'Processing...'
-                    : `Confirm & Pay ${formatCurrency(calculateTotal())}`}
-                </Button>
-              </CardFooter>
-            </Card>
-          )}
-
-          {/* Step 4: Confirmation */}
-          {step === 4 && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-8 w-8 text-green-600" />
-                </div>
-                <h2 className="text-2xl font-bold mb-2">Booking Confirmed!</h2>
-                <p className="text-muted-foreground mb-6">
-                  Your tickets have been booked successfully. A confirmation email has been
-                  sent to your email address.
-                </p>
-                <div className="bg-muted p-4 rounded-lg mb-6">
-                  <p className="text-sm text-muted-foreground">Booking Reference</p>
-                  <p className="text-2xl font-mono font-bold">
-                    EVT-{Date.now().toString(36).toUpperCase()}
-                  </p>
-                </div>
-                <div className="flex gap-2 justify-center">
-                  <Button variant="outline" onClick={() => navigate('/bookings')}>
-                    View My Bookings
-                  </Button>
-                  <Button onClick={() => navigate('/events')}>Browse More Events</Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Order Summary Sidebar */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-4">
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {currentTicket ? (
-                <>
-                  <div className="flex justify-between">
-                    <span>
-                      {currentTicket.type || currentTicket.name} x {quantity}
-                    </span>
-                    <span>{formatCurrency(calculateSubtotal())}</span>
-                  </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Discount</span>
-                      <span>-{formatCurrency(discountAmount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Service Fee (5%)</span>
-                    <span>{formatCurrency(calculateSubtotal() * 0.05)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span>{formatCurrency(calculateTotal())}</span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Select a ticket to see the order summary
-                </p>
+                  {/* Email confirmation note */}
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1 }}
+                    className="text-sm text-slate-500 mt-8 flex items-center justify-center gap-2"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Confirmation email sent to {billingDetails.email || 'your email'}
+                  </motion.p>
+                </motion.div>
               )}
-            </CardContent>
-          </Card>
+            </AnimatePresence>
+
+            {/* Navigation Buttons */}
+            {currentStep < 2 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex justify-between items-center mt-8 pt-6 border-t border-slate-800"
+              >
+                <Button
+                  variant="outline"
+                  className="border-slate-700 text-white hover:bg-slate-800"
+                  onClick={goBack}
+                  disabled={currentStep === 0}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+
+                <ParticleButton
+                  onClick={goNext}
+                  disabled={!canGoNext()}
+                  className={cn(
+                    'min-w-[180px]',
+                    !canGoNext() && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  {currentStep === 0 && !requiresSeating ? 'Continue to Payment' : 
+                   currentStep === 0 ? 'Select Seats' : 
+                   'Continue to Payment'}
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </ParticleButton>
+              </motion.div>
+            )}
+
+            {/* Back button for payment step */}
+            {currentStep === 2 && (
+              <div className="mt-6">
+                <Button
+                  variant="ghost"
+                  className="text-slate-400 hover:text-white"
+                  onClick={goBack}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to {shouldSkipSeats ? 'Tickets' : 'Seats'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Order Summary */}
+          {currentStep < 3 && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="lg:col-span-1"
+            >
+              <div className="sticky top-8">
+                <GlowingOrderSummary
+                  event={event}
+                  tickets={ticketItems}
+                  selectedSeats={selectedSeats}
+                  subtotal={subtotal}
+                  onDiscountApplied={handleDiscountApplied}
+                />
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
+
+      {/* Digital Ticket Modal */}
+      <AnimatePresence>
+        {selectedViewTicket && (
+          <DigitalTicket
+            ticket={selectedViewTicket}
+            onClose={() => setSelectedViewTicket(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Processing Overlay */}
+      <AnimatePresence>
+        {processing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
+          >
+            <div className="text-center">
+              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+              <p className="text-white font-medium">Processing your booking...</p>
+              <p className="text-slate-400 text-sm mt-1">Please don't close this page</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
+};
 
 export default BookEventPage;

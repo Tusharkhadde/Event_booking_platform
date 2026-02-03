@@ -1,11 +1,12 @@
 // src/App.jsx
 import { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate ,BrowserRouter} from "react-router-dom";
 import { Car } from 'lucide-react';
 
 // Store
 import useThemeStore from "@/store/themeStore";
 import useAccessibilityStore from '@/store/accessibilityStore';
+
 
 // Layouts
 import PublicLayout from "@/layouts/PublicLayout";
@@ -125,6 +126,7 @@ function App() {
           <Route path="/book/:eventId" element={<BookEventPage />} />
           <Route path="/my-cancellations" element={<MyCancellationsPage />} />
           <Route path="/my-transport" element={<MyTransportPage />} />
+          <Route path="/book" element={<BookEventPage />} /> {/* For demo */}     
         </Route>
 
         {/* ==================== ORGANIZER ROUTES ==================== */}

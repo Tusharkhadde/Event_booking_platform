@@ -1,80 +1,114 @@
 // src/hooks/useTickets.js
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import ticketService from '@/services/ticketService';
-import { toast } from '@/hooks/useToast';
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "./useAuth";
+import * as ticketService from "@/services/ticketService";
+import supabase from "@/services/supabaseClient";
+import { toast } from "sonner";
 
-export function useTickets(eventId) {
-  return useQuery({
-    queryKey: ['tickets', eventId],
-    queryFn: () => ticketService.getTicketsByEvent(eventId),
-    enabled: !!eventId,
-  });
-}
+/* ---------------- CREATE ---------------- */
+export const useCreateTicket = () => {
+  const { user } = useAuth();
 
-export function useCreateTicket(eventId) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ticketData) => ticketService.createTicket(ticketData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', eventId] });
-      toast({
-        title: 'Ticket created',
-        description: 'New ticket type has been added.',
-        variant: 'success',
+  const createTicket = async (data) => {
+    try {
+      const result = await ticketService.createTicket({
+        ...data,
+        user_id: user.id,
       });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Failed to create ticket',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-}
+      toast.success("Ticket created successfully");
+      return result;
+    } catch (err) {
+      toast.error(err.message || "Failed to create ticket");
+      throw err;
+    }
+  };
 
-export function useUpdateTicket(eventId) {
-  const queryClient = useQueryClient();
+  return { createTicket };
+};
 
-  return useMutation({
-    mutationFn: ({ ticketId, updates }) => ticketService.updateTicket(ticketId, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', eventId] });
-      toast({
-        title: 'Ticket updated',
-        description: 'Ticket type has been updated.',
-        variant: 'success',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Failed to update ticket',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-}
+/* ---------------- UPDATE ---------------- */
+export const useUpdateTicket = () => {
+  const updateTicket = async (ticketId, updates) => {
+    try {
+      await ticketService.updateTicket(ticketId, updates);
+      toast.success("Ticket updated");
+      return true;
+    } catch (err) {
+      toast.error(err.message || "Failed to update ticket");
+      return false;
+    }
+  };
 
-export function useDeleteTicket(eventId) {
-  const queryClient = useQueryClient();
+  return { updateTicket };
+};
 
-  return useMutation({
-    mutationFn: (ticketId) => ticketService.deleteTicket(ticketId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', eventId] });
-      toast({
-        title: 'Ticket deleted',
-        description: 'Ticket type has been removed.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Failed to delete ticket',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-}
+/* ---------------- DELETE ---------------- */
+export const useDeleteTicket = () => {
+  const deleteTicket = async (ticketId) => {
+    try {
+      await ticketService.deleteTicket(ticketId);
+      toast.success("Ticket deleted");
+      return true;
+    } catch (err) {
+      toast.error(err.message || "Failed to delete ticket");
+      return false;
+    }
+  };
+
+  return { deleteTicket };
+};
+
+/* ---------------- READ (MAIN) ---------------- */
+export const useTickets = (eventId = null) => {
+  const { user } = useAuth();
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [stats, setStats] = useState(null);
+
+  const fetchUserTickets = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const data = await ticketService.getUserTickets(user.id);
+      setTickets(data);
+    } catch (err) {
+      setError(err.message);
+      toast.error("Failed to load tickets");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchEventTickets = useCallback(async () => {
+    if (!eventId) return;
+
+    try {
+      setLoading(true);
+      const [ticketsData, statsData] = await Promise.all([
+        ticketService.getEventTickets(eventId),
+        ticketService.getTicketStats(eventId),
+      ]);
+      setTickets(ticketsData);
+      setStats(statsData);
+    } catch (err) {
+      setError(err.message);
+      toast.error("Failed to load event tickets");
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId]);
+
+  useEffect(() => {
+    eventId ? fetchEventTickets() : fetchUserTickets();
+  }, [eventId, fetchUserTickets, fetchEventTickets]);
+
+  return {
+    tickets,
+    loading,
+    error,
+    stats,
+    refresh: eventId ? fetchEventTickets : fetchUserTickets,
+  };
+};

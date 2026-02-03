@@ -14,6 +14,7 @@ export default {
       },
     },
     extend: {
+      /* ---------- COLORS (shadcn) ---------- */
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -49,12 +50,17 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+
+      /* ---------- BORDER RADIUS ---------- */
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+
+      /* ---------- KEYFRAMES ---------- */
       keyframes: {
+        // shadcn accordion
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -63,10 +69,40 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+
+        // animations you added
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        "gradient-x": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
       },
+
+      /* ---------- ANIMATIONS ---------- */
       animation: {
+        // shadcn
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+
+        // custom
+        shimmer: "shimmer 2s linear infinite",
+        "gradient-x": "gradient-x 3s ease infinite",
+        "spin-slow": "spin 3s linear infinite",
+        float: "float 3s ease-in-out infinite",
+        pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "bounce-slow": "bounce 2s infinite",
+      },
+
+      /* ---------- BACKGROUND SIZE ---------- */
+      backgroundSize: {
+        "300%": "300%",
       },
     },
   },

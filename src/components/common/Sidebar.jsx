@@ -49,7 +49,7 @@ function Sidebar({ isOpen, onClose }) {
         { to: '/notifications', icon: Bell, label: 'Notifications', badge: 2 },
         { to: '/profile', icon: Settings, label: 'Profile' },
         { to: '/my-cancellations', icon: Clock, label: 'My Cancellations' },
-        { to: '/my-transport', icon: Car, label: 'My Transport' },
+        { to: '/my-transport', icon: Car, label: 'My Transport' },        
       ];
     }
 

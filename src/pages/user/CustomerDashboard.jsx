@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import useAuthStore from '@/store/authStore';
 import { formatDate, getInitials } from '@/utils/helpers';
 import EmptyState from '@/components/common/EmptyState';
+import AnimatedButton from '@/components/ui/animated-button';
 
 function CustomerDashboard() {
   const { profile } = useAuthStore();
@@ -332,20 +333,49 @@ function InviteCard({ invite }) {
   );
 }
 
+// function SavedEventCard({ event }) {
+//   return (
+//     <Card className="overflow-hidden hover:shadow-md transition-shadow">
+//       <div className="aspect-video bg-muted flex items-center justify-center">
+//         <Calendar className="h-8 w-8 text-muted-foreground opacity-50" />
+//       </div>
+//       <CardContent className="p-3">
+//         <p className="font-medium truncate">{event.title}</p>
+//         <p className="text-sm text-muted-foreground">{formatDate(event.date)}</p>
+//         <div className="flex items-center justify-between mt-2">
+//           <span className="text-primary font-semibold">{event.price}</span>
+//           <Button size="sm" variant="outline" asChild>
+//             <Link to={`/events/${event.id}`}>Book Now</Link>
+//           </Button>
+//         </div>
+//       </CardContent>
+//     </Card>
+//   );
+// }
+
 function SavedEventCard({ event }) {
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <div className="aspect-video bg-muted flex items-center justify-center">
         <Calendar className="h-8 w-8 text-muted-foreground opacity-50" />
       </div>
+
       <CardContent className="p-3">
         <p className="font-medium truncate">{event.title}</p>
-        <p className="text-sm text-muted-foreground">{formatDate(event.date)}</p>
+        <p className="text-sm text-muted-foreground">
+          {formatDate(event.date)}
+        </p>
+
         <div className="flex items-center justify-between mt-2">
-          <span className="text-primary font-semibold">{event.price}</span>
-          <Button size="sm" variant="outline" asChild>
-            <Link to={`/events/${event.id}`}>Book Now</Link>
-          </Button>
+          <span className="text-primary font-semibold">
+            {event.price}
+          </span>
+
+          <Link to={`/events/${event.id}`}>
+            <AnimatedButton className="px-4 py-1.5 text-sm">
+              Book Now
+            </AnimatedButton>
+          </Link>
         </div>
       </CardContent>
     </Card>
