@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import App from './App';
 import './styles/globals.css';
-
 // Create a client for React Query
 const queryClient = new QueryClient({
   defaultOptions: {

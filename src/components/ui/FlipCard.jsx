@@ -1,48 +1,85 @@
 // src/components/ui/FlipCard.jsx
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { cn } from '@/utils/cn';
 
 export const FlipCard = ({ 
   front, 
   back, 
-  isFlipped: controlledFlipped, 
-  className 
+  className = '',
+  flipOnHover = false 
 }) => {
-  const [isFlippedLocal, setIsFlippedLocal] = useState(false);
-  
-  const isFlipped = controlledFlipped !== undefined ? controlledFlipped : isFlippedLocal;
+  const [isFlipped, setIsFlipped] = useState(false);
 
-  const handleClick = () => {
-    if (controlledFlipped === undefined) {
-      setIsFlippedLocal(!isFlippedLocal);
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (!flipOnHover) {
+      setIsFlipped(!isFlipped);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (flipOnHover) {
+      setIsFlipped(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (flipOnHover) {
+      setIsFlipped(false);
     }
   };
 
   return (
     <div 
-      className={cn("perspective-1000 cursor-pointer group", className)} 
+      className={className}
+      style={{ 
+        perspective: '1000px',
+        width: '100%',
+        height: '100%'
+      }}
       onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <motion.div
-        className="relative w-full h-full transition-all duration-500 transform-style-preserve-3d"
-        initial={false}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          cursor: 'pointer'
+        }}
       >
-        {/* Front */}
-        <div className="absolute inset-0 w-full h-full backface-hidden">
+        {/* Front Face */}
+        <div 
+          style={{ 
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
+          }}
+        >
           {front}
         </div>
 
-        {/* Back */}
+        {/* Back Face */}
         <div 
-          className="absolute inset-0 w-full h-full backface-hidden"
-          style={{ transform: "rotateY(180deg)" }}
+          style={{ 
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)'
+          }}
         >
           {back}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };
+
+export default FlipCard;
