@@ -1,6 +1,6 @@
 // src/App.jsx
 import { useEffect } from "react";
-import { Routes, Route, Navigate ,BrowserRouter} from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Car } from 'lucide-react';
 
 // Store
@@ -182,7 +182,6 @@ function App() {
           <Route path="/vendor/services" element={<VendorServicesPage />} />
           <Route path="/vendor/bookings" element={<VendorBookingsPage />} />
           <Route path="/vendor/availability" element={<VendorAvailabilityPage />} />
-          <Route path="/admin/vendors" element={<AdminVendorsPage />} />
           <Route path="/vendor/reviews" element={<VendorReviewsPage />} />
           <Route path="/vendor/messages" element={<VendorMessagesPage />} />
         </Route>
@@ -198,6 +197,7 @@ function App() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/events" element={<AdminEvents />} />
+          <Route path="/admin/vendors" element={<AdminVendorsPage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
           <Route path="/admin/promos" element={<AdminPromosPage />} />
           <Route path="/admin/refunds" element={<AdminRefundsPage />} />

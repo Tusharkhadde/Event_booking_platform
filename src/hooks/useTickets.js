@@ -11,6 +11,9 @@ export const useCreateTicket = () => {
 
   const createTicket = async (data) => {
     try {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
       const result = await ticketService.createTicket({
         ...data,
         user_id: user.id,

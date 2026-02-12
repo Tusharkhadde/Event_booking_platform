@@ -331,6 +331,69 @@ export const isEventSaved = async (userId, eventId) => {
   return !!data;
 };
 
+// Create a new event
+export const createEvent = async (eventData) => {
+  const { data, error } = await supabase
+    .from('events')
+    .insert([eventData])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Update an event
+export const updateEvent = async (eventId, updates) => {
+  const { data, error } = await supabase
+    .from('events')
+    .update(updates)
+    .eq('id', eventId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Delete an event
+export const deleteEvent = async (eventId) => {
+  const { data, error } = await supabase
+    .from('events')
+    .delete()
+    .eq('id', eventId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Update event status (publish, unpublish, cancel)
+export const updateEventStatus = async (eventId, status) => {
+  const updateData = {};
+  
+  if (status === 'published') {
+    updateData.is_published = true;
+    updateData.published_at = new Date().toISOString();
+  } else if (status === 'unpublished') {
+    updateData.is_published = false;
+  } else if (status === 'cancelled') {
+    updateData.is_cancelled = true;
+    updateData.cancelled_at = new Date().toISOString();
+  }
+
+  const { data, error } = await supabase
+    .from('events')
+    .update(updateData)
+    .eq('id', eventId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 export default {
   getEvents,
   getEventById,
@@ -341,5 +404,9 @@ export default {
   searchEvents,
   getEventCategories,
   toggleSaveEvent,
-  isEventSaved
+  isEventSaved,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  updateEventStatus,
 };

@@ -6,14 +6,14 @@ import { toast } from '@/hooks/useToast';
 export function useEvents(filters = {}) {
   return useQuery({
     queryKey: ['events', filters],
-    queryFn: () => eventService.getAllEvents(filters),
+    queryFn: () => eventService.getEvents(filters),
   });
 }
 
 export function useEvent(eventId) {
   return useQuery({
     queryKey: ['event', eventId],
-    queryFn: () => eventService.getEvent(eventId),
+    queryFn: () => eventService.getEventById(eventId),
     enabled: !!eventId,
   });
 }
@@ -23,7 +23,7 @@ export function useOrganizerEvents() {
   
   return useQuery({
     queryKey: ['organizer-events', user?.id],
-    queryFn: () => eventService.getOrganizerEvents(user.id),
+    queryFn: () => eventService.getEvents({ organizer_id: user.id }),
     enabled: !!user?.id,
   });
 }
@@ -36,9 +36,11 @@ export function useFeaturedEvents(limit = 6) {
 }
 
 export function useUpcomingEvents(limit = 10) {
+  const { user } = useAuthStore();
   return useQuery({
-    queryKey: ['upcoming-events', limit],
-    queryFn: () => eventService.getUpcomingEvents(limit),
+    queryKey: ['upcoming-events', limit, user?.id],
+    queryFn: () => eventService.getUpcomingEventsForUser(user?.id),
+    enabled: !!user?.id,
   });
 }
 
@@ -47,7 +49,7 @@ export function useEventStats() {
   
   return useQuery({
     queryKey: ['event-stats', user?.id],
-    queryFn: () => eventService.getEventStats(user.id),
+    queryFn: () => eventService.getEvents({ organizer_id: user.id }),
     enabled: !!user?.id,
   });
 }
@@ -57,10 +59,15 @@ export function useCreateEvent() {
   const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: (eventData) => eventService.createEvent({
-      ...eventData,
-      organizer_id: user.id,
-    }),
+    mutationFn: (eventData) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      return eventService.createEvent({
+        ...eventData,
+        organizer_id: user.id,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['organizer-events'] });

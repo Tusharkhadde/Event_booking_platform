@@ -28,13 +28,17 @@ export function useAddEventReview(eventId) {
   const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: ({ rating, comment }) =>
-      reviewService.addEventReview({
+    mutationFn: ({ rating, comment }) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      return reviewService.addEventReview({
         event_id: eventId,
         user_id: user.id,
         rating,
         comment,
-      }),
+      });
+    },
     onSuccess: () => {
       if (eventId) {
         queryClient.invalidateQueries({ queryKey: ['event-reviews', eventId] });

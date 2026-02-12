@@ -15,7 +15,7 @@ export function useOrganizerCalendar() {
       }
 
       // Organizer events
-      const events = await eventService.getOrganizerEvents(user.id);
+      const events = await eventService.getEvents({ organizer_id: user.id });
       // Organizer tasks (for those events)
       const tasks = await taskService.getOrganizerTasks(user.id);
 

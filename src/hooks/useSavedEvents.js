@@ -28,7 +28,12 @@ export function useSaveEvent() {
   const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: (eventId) => savedEventsService.saveEvent(user.id, eventId),
+    mutationFn: (eventId) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      return savedEventsService.saveEvent(user.id, eventId);
+    },
     onSuccess: (_, eventId) => {
       queryClient.invalidateQueries({ queryKey: ['saved-events'] });
       queryClient.invalidateQueries({ queryKey: ['is-saved', user?.id, eventId] });
@@ -53,7 +58,12 @@ export function useUnsaveEvent() {
   const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: (eventId) => savedEventsService.unsaveEvent(user.id, eventId),
+    mutationFn: (eventId) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      return savedEventsService.unsaveEvent(user.id, eventId);
+    },
     onSuccess: (_, eventId) => {
       queryClient.invalidateQueries({ queryKey: ['saved-events'] });
       queryClient.invalidateQueries({ queryKey: ['is-saved', user?.id, eventId] });

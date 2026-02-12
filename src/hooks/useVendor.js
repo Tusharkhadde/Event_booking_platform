@@ -26,8 +26,12 @@ export function useCreateService() {
   const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: (serviceData) =>
-      vendorService.createService({ ...serviceData, vendor_id: user.id }),
+    mutationFn: (serviceData) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      return vendorService.createService({ ...serviceData, vendor_id: user.id });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-services'] });
       toast({
@@ -155,7 +159,7 @@ export function useVendorRating() {
 
   return useQuery({
     queryKey: ['vendor-rating', user?.id],
-    queryFn: () => vendorService.getVendorRating(user.id),
+    queryFn: () => vendorService.getVendorRatingSummary(user.id),
     enabled: !!user?.id,
   });
 }

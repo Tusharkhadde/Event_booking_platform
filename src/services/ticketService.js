@@ -342,6 +342,33 @@ export const cancelTicket = async (ticketId, reason) => {
   return data;
 };
 
+// Update ticket
+export const updateTicket = async (ticketId, updates) => {
+  const { data, error } = await supabase
+    .from('tickets')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', ticketId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Delete ticket
+export const deleteTicket = async (ticketId) => {
+  const { error } = await supabase
+    .from('tickets')
+    .delete()
+    .eq('id', ticketId);
+
+  if (error) throw error;
+  return true;
+};
+
 // Resend ticket email
 export const resendTicketEmail = async (ticketId) => {
   // This would integrate with your email service
@@ -375,5 +402,7 @@ export default {
   getTicketStats,
   transferTicket,
   cancelTicket,
+  updateTicket,
+  deleteTicket,
   resendTicketEmail
 };

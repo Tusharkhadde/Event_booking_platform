@@ -24,7 +24,7 @@ export function useMarkNotificationRead() {
       notificationService.markAsRead(notificationId),
 
     onSuccess: () => {
-      queryClient.invalidateQueries(["notifications", user?.id]);
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
     },
 
     onError: (error) => {
@@ -43,10 +43,15 @@ export function useMarkAllNotificationsRead() {
   const { user } = useAuthStore();
 
   return useMutation({
-    mutationFn: () => notificationService.markAllAsRead(user.id),
+    mutationFn: () => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      return notificationService.markAllAsRead(user.id);
+    },
 
     onSuccess: () => {
-      queryClient.invalidateQueries(["notifications", user?.id]);
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
       toast({
         title: "Done",
         description: "All notifications marked as read",
